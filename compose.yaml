@@ -7,6 +7,8 @@ services:
       - ./src:/app
     environment:
       - WATCHPACK_POLLING=true
+      # Prismaが使用するデータベースURLを定義
+      - DATABASE_URL=postgresql://user:password@db:5432/myapp_db?schema=public
     command: sh -c "npm run dev"
     ports:
       - "3000:3000"
