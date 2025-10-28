@@ -17,6 +17,7 @@
 // datamodel source: Postgresを使用
 datasource db {
   provider = "postgresql"
+  // Vercel/Neonから自動設定された環境変数を使用
   url      = env("DATABASE_URL")
 }
 
