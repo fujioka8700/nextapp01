@@ -1,86 +1,55 @@
 import prisma from '../lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { Todo } from '@prisma/client'; // Prismaが生成したTodoモデルの型をインポート
+import Header from './components/Header';
 
-// Next.js Server Action
-// Server ActionsはTypeScriptでも動作します。
-async function createTodo(formData: FormData) {
-  'use server';
-
-  // FormDataから値を取得
-  const title = formData.get('title') as string;
-
-  if (!title) {
-    return;
-  }
-
-  try {
-    await prisma.todo.create({
-      data: {
-        title: title,
-      },
-    });
-
-    revalidatePath('/');
-  } catch (error) {
-    console.error('Error creating todo:', error);
-  }
-}
-
-// データの読み込み関数
-// 戻り値の型をTodo[]として明示的に指定
-async function getTodos(): Promise<Todo[]> {
-  try {
-    const todos = await prisma.todo.findMany({
-      orderBy: {
-        id: 'desc',
-      },
-    });
-    return todos;
-  } catch (error) {
-    console.error('Error fetching todos:', error);
-    return [];
-  }
-}
-
-// Next.jsのページコンポーネント (Server Component)
 export default async function HomePage() {
-  const todos = await getTodos();
+  // サーバーサイドでデータベースからTodoリストを取得
+  const todos: Todo[] = await prisma.todo.findMany({
+    orderBy: { id: 'asc' },
+  });
+
+  // 新しいTodoを追加するサーバーアクション
+  async function addTodo(data: FormData) {
+    'use server';
+    const title = data.get('title')?.toString() || '';
+    if (title) {
+      await prisma.todo.create({ data: { title } });
+      revalidatePath('/'); // ホームページを再検証して最新のTodoリストを表示
+    }
+  }
 
   return (
-    <main style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-      <h1>Next.js & PostgreSQL (Prisma) サンプル</h1>
+    <div>
+      <Header />
+      <main className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold mb-6">Todoリスト</h1>
 
-      {/* データの書き込みフォーム (Server Action を使用) */}
-      <form action={createTodo} style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
-          name="title"
-          placeholder="新しいTODOを入力"
-          required
-          style={{ padding: '8px', flexGrow: 1, border: '1px solid #ccc' }}
-        />
-        <button type="submit" style={{ padding: '8px 15px', background: 'green', color: 'white', border: 'none', cursor: 'pointer' }}>
-          Prismaで追加
-        </button>
-      </form>
+        {/* Todo追加フォーム */}
+        <form action={addTodo} className="mb-6">
+          <input
+            type="text"
+            name="title"
+            placeholder="新しいTodoを追加"
+            className="border border-gray-300 rounded-lg px-4 py-2 mr-4 w-2/3"
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            追加
+          </button>
+        </form>
 
-      <hr />
-
-      <h2>TODOリスト</h2>
-      {/* データの読み込み結果の表示 */}
-      {todos.length === 0 ? (
-        <p>TODOはまだありません。上記フォームから追加してください。</p>
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {/* todos配列はTodo型として認識されている */}
-          {todos.map((todo: Todo) => (
-            <li key={todo.id} style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}>
-              ID: {todo.id} - {todo.title}
+        {/* Todoリスト表示 */}
+        <ul className="space-y-4">
+          {todos.map((todo) => (
+            <li key={todo.id} className="border-b pb-2">
+              {todo.title}
             </li>
           ))}
         </ul>
-      )}
-    </main>
+      </main>
+    </div>
   );
-}
+} 

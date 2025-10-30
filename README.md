@@ -1,2 +1,4 @@
-# nextapp01
-Windows11で開発します。
+Dockerコンテナを再作成して起動
+```bash
+$ docker compose up --build -d
+````

@@ -12,6 +12,7 @@ services:
     command: sh -c "npm run dev"
     ports:
       - "3000:3000"
+      - "5555:5555" # ⭐︎Prisma Studioのために追加: コンテナの5555ポートをホストの5555ポートにマッピング
     # appサービスがdbサービスに依存することを定義
     depends_on:
       - db
