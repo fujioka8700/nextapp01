@@ -11,6 +11,7 @@
     "migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^6.18.0",
     "next": "16.0.0",
     "next-auth": "^5.0.0-beta.30",

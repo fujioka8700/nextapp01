@@ -4,30 +4,104 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-// generator client {
-//   provider = "prisma-client"
-//   output   = "../app/generated/prisma"
-// }
-
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-// }
-
-// datamodel source: Postgresを使用
-datasource db {
-  provider = "postgresql"
-  // Vercel/Neonから自動設定された環境変数を使用
-  url      = env("DATABASE_URL")
-}
-
-// Next.jsのServer Componentなどで使用するPrisma Clientを生成
 generator client {
   provider = "prisma-client-js"
 }
 
-// データベースに作成したいテーブルのモデルを定義
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  name          String?
+  email         String          @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  // Optional for WebAuthn support
+  Authenticator Authenticator[]
+ 
+  // Todoモデルへの逆リレーションを追加
+  todos         Todo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+ 
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([provider, providerAccountId])
+}
+ 
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+ 
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+ 
+  @@id([identifier, token])
+}
+ 
+// Optional for WebAuthn support
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([userId, credentialID])
+}
+
 model Todo {
   id    Int     @id @default(autoincrement())
-  title String
+  
+  // 必須フィールド
+  title        String                       // Todo の内容
+  isCompleted  Boolean   @default(false)    // 完了フラグ
+
+  // 1. リレーションキー (外部キー): User モデルの id を参照
+  userId       String                       
+  
+  // 2. リレーション定義 (一対多)
+  // user: User モデルへの参照
+  // fields: [userId] と references: [id] で紐づけ
+  // onDelete: Cascade は、ユーザーが削除されたら関連するTodoも自動削除
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade) 
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

@@ -1,55 +1,91 @@
 import prisma from '../lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { Todo } from '@prisma/client'; // Prismaが生成したTodoモデルの型をインポート
+import { Todo } from '@prisma/client';
 import Header from './components/Header';
+import { auth } from '@/auth'; // 👈 認証設定をエクスポートしたファイルからのインポートを想定
+
+async function getTodos(): Promise<Todo[]> {
+  try {
+    const todos = await prisma.todo.findMany({
+      orderBy: {
+        id: 'desc',
+      },
+    });
+    return todos;
+  } catch (error) {
+    console.error('Error fetching todos:', error);
+    return [];
+  }
+}
+
+async function createTodo(formData: FormData): Promise<void> {
+  'use server';
+
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    console.error('Error: User not authenticated.');
+    return;
+  }
+
+  const title = formData.get('title') as string;
+  if (!title) return;
+
+  const userId = session.user.id;
+
+  try {
+    await prisma.todo.create({
+      data: {
+        title: title,
+        userId: userId,
+      },
+    });
+
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error creating todo:', error);
+  }
+}
 
 export default async function HomePage() {
-  // サーバーサイドでデータベースからTodoリストを取得
-  const todos: Todo[] = await prisma.todo.findMany({
-    orderBy: { id: 'asc' },
-  });
-
-  // 新しいTodoを追加するサーバーアクション
-  async function addTodo(data: FormData) {
-    'use server';
-    const title = data.get('title')?.toString() || '';
-    if (title) {
-      await prisma.todo.create({ data: { title } });
-      revalidatePath('/'); // ホームページを再検証して最新のTodoリストを表示
-    }
-  }
+  const todos = await getTodos();
 
   return (
     <div>
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-6">Todoリスト</h1>
-
-        {/* Todo追加フォーム */}
-        <form action={addTodo} className="mb-6">
+        <form
+          action={createTodo}
+          style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}
+        >
           <input
             type="text"
             name="title"
-            placeholder="新しいTodoを追加"
-            className="border border-gray-300 rounded-lg px-4 py-2 mr-4 w-2/3"
+            placeholder="新しいTODOを入力"
+            required
+            style={{ padding: '8px', flexGrow: 1, border: '1px solid #ccc' }}
           />
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            style={{
+              padding: '8px 15px',
+              background: 'green',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
-            追加
+            やることを追加
           </button>
         </form>
-
-        {/* Todoリスト表示 */}
-        <ul className="space-y-4">
+        <ul>
           {todos.map((todo) => (
-            <li key={todo.id} className="border-b pb-2">
-              {todo.title}
+            <li key={todo.id}>
+              No.{todo.id} {todo.title}
             </li>
           ))}
         </ul>
       </main>
     </div>
   );
-} 
+}
