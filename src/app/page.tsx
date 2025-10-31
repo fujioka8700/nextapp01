@@ -48,36 +48,49 @@ async function createTodo(formData: FormData): Promise<void> {
 }
 
 export default async function HomePage() {
+  // 🚀 認証セッションを取得
+  const session = await auth();
   const todos = await getTodos();
+
+  // フォームを表示するかどうかを決定
+  const showForm = !!session?.user?.id;
 
   return (
     <div>
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <form
-          action={createTodo}
-          style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}
-        >
-          <input
-            type="text"
-            name="title"
-            placeholder="新しいTODOを入力"
-            required
-            style={{ padding: '8px', flexGrow: 1, border: '1px solid #ccc' }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: '8px 15px',
-              background: 'green',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
+        {/* ユーザーが認証されている場合のみフォームを表示 */}
+        {showForm ? (
+          <form
+            action={createTodo}
+            style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}
           >
-            やることを追加
-          </button>
-        </form>
+            <input
+              type="text"
+              name="title"
+              placeholder="新しいTODOを入力"
+              required
+              style={{ padding: '8px', flexGrow: 1, border: '1px solid #ccc' }}
+            />
+            <button
+              type="submit"
+              style={{
+                padding: '8px 15px',
+                background: 'green',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              やることを追加
+            </button>
+          </form>
+        ) : (
+          // ログインしていない場合のメッセージを表示（任意）
+          <p style={{ marginBottom: '20px', color: 'black' }}>
+            TODOを追加するにはログインが必要です。
+          </p>
+        )}
         <ul>
           {todos.map((todo) => (
             <li key={todo.id}>
