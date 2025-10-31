@@ -4,9 +4,23 @@ import { Todo } from '@prisma/client';
 import Header from './components/Header';
 import { auth } from '@/auth'; // 👈 認証設定をエクスポートしたファイルからのインポートを想定
 
-async function getTodos(): Promise<Todo[]> {
+/**
+ * 認証ユーザーのTODOのみを取得する
+ * @param userId ログインユーザーのID (string | undefined)
+ * @returns 該当ユーザーのTODOリスト
+ */
+async function getTodos(userId?: string): Promise<Todo[]> {
+  // ユーザーIDがない場合は、TODOを取得せず空の配列を返す
+  if (!userId) {
+    return [];
+  }
+
   try {
     const todos = await prisma.todo.findMany({
+      where: {
+        // 🚀 ログインユーザーIDでフィルタリング
+        userId: userId,
+      },
       orderBy: {
         id: 'desc',
       },
@@ -50,10 +64,16 @@ async function createTodo(formData: FormData): Promise<void> {
 export default async function HomePage() {
   // 🚀 認証セッションを取得
   const session = await auth();
-  const todos = await getTodos();
+  const userId = session?.user?.id; // ユーザーIDを取得
 
-  // フォームを表示するかどうかを決定
-  const showForm = !!session?.user?.id;
+  // 🚀 getTodosにユーザーIDを渡す
+  const todos = await getTodos(userId);
+
+  // フォームを表示するかどうかを決定(ログイン時のみ表示)
+  const showForm = !!userId;
+
+  // 🚀 ログイン状態を判定
+  const isLoggedIn = !!userId;
 
   return (
     <div>
@@ -91,13 +111,24 @@ export default async function HomePage() {
             TODOを追加するにはログインが必要です。
           </p>
         )}
-        <ul>
-          {todos.map((todo) => (
-            <li key={todo.id}>
-              No.{todo.id} {todo.title}
-            </li>
-          ))}
-        </ul>
+
+        <div style={{ borderTop: '1px solid #eee', paddingTop: '20px' }}>
+          <h3>📖 あなたのTODOリスト</h3>
+          {/* 🚀 ログイン状態によって表示内容を切り替える */}
+          {isLoggedIn ? (
+            <ul>
+              {todos.map((todo) => (
+                <li key={todo.id}>
+                  No.{todo.id} {todo.title}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={{ color: '#666', fontStyle: 'italic' }}>
+              ログイン後、やることが表示されます
+            </p>
+          )}
+        </div>
       </main>
     </div>
   );
