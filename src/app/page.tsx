@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { Todo } from '@prisma/client';
 import Header from './components/Header';
 import { auth } from '@/auth'; // 👈 認証設定をエクスポートしたファイルからのインポートを想定
+import TodoList from './components/TodoList'; // 🚀 追加: Client Componentをインポート
 
 /**
  * 認証ユーザーのTODOのみを取得する
@@ -98,6 +99,45 @@ async function deleteTodo(formData: FormData): Promise<void> {
   }
 }
 
+/**
+ * 特定のTODOの内容を更新するサーバーアクション
+ */
+async function updateTodo(formData: FormData): Promise<void> {
+  'use server';
+
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    console.error('Error: User not authenticated for update.');
+    return;
+  }
+
+  const idString = formData.get('id') as string;
+  const newTitle = formData.get('newTitle') as string;
+
+  const todoId = parseInt(idString, 10);
+  const userId = session.user.id;
+
+  if (isNaN(todoId) || !newTitle) return;
+
+  try {
+    // IDとユーザーIDが一致するレコードのみを更新（認可チェックを兼ねる）
+    await prisma.todo.update({
+      where: {
+        id: todoId,
+        userId: userId, // 👈 編集対象が本人のTODOかチェック
+      },
+      data: {
+        title: newTitle,
+      },
+    });
+
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error updating todo or todo not found:', error);
+  }
+}
+
 export default async function HomePage() {
   // 🚀 認証セッションを取得
   const session = await auth();
@@ -151,49 +191,16 @@ export default async function HomePage() {
 
         <div style={{ borderTop: '1px solid #eee', paddingTop: '20px' }}>
           <h3>📖 あなたのTODOリスト</h3>
-          {/* ログイン状態によって表示内容を切り替える */}
           {isLoggedIn ? (
-            <ul>
-              {todos.map((todo) => (
-                <li
-                  key={todo.id}
-                  // 削除ボタンを右端に配置するためのスタイルを追加
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom: '1px dotted #ccc',
-                  }}
-                >
-                  <span>
-                    No.{todo.id} {todo.title}
-                  </span>
-                  {/* 🚀 削除ボタンのフォーム */}
-                  <form action={deleteTodo}>
-                    {/* 削除対象のTODO IDを隠しフィールドで送信 */}
-                    <input type="hidden" name="id" value={todo.id} />
-                    <button
-                      type="submit"
-                      style={{
-                        background: '#dc3545', // 赤色
-                        color: 'white',
-                        border: 'none',
-                        padding: '5px 10px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                      }}
-                    >
-                      削除
-                    </button>
-                  </form>
-                </li>
-              ))}
-            </ul>
+            // 🚀 TodoListコンポーネントで置き換え、Server Actionをpropsとして渡す
+            <TodoList
+              todos={todos}
+              deleteTodo={deleteTodo}
+              updateTodo={updateTodo}
+            />
           ) : (
             <p style={{ color: '#666', fontStyle: 'italic' }}>
-              **ログイン後、やることが表示されます**
+              ログイン後、やることが表示されます
             </p>
           )}
         </div>
