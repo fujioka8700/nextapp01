@@ -61,6 +61,43 @@ async function createTodo(formData: FormData): Promise<void> {
   }
 }
 
+/**
+ * 特定のTODOを削除するサーバーアクション
+ */
+async function deleteTodo(formData: FormData): Promise<void> {
+  'use server';
+
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    console.error('Error: User not authenticated for deletion.');
+    return;
+  }
+
+  // フォームからTODO IDを取得
+  const idString = formData.get('id') as string;
+  const todoId = parseInt(idString, 10);
+
+  if (isNaN(todoId)) return;
+
+  const userId = session.user.id;
+
+  try {
+    // IDとユーザーIDが一致するレコードのみを削除（認可チェックを兼ねる）
+    await prisma.todo.delete({
+      where: {
+        id: todoId,
+        userId: userId, // 👈 削除対象が本人のTODOかチェック
+      },
+    });
+
+    revalidatePath('/');
+  } catch (error) {
+    // 該当のTODOが存在しない場合（既に削除された、またはユーザーIDが一致しない）もエラーを無視して続行することが多い
+    console.error('Error deleting todo or todo not found:', error);
+  }
+}
+
 export default async function HomePage() {
   // 🚀 認証セッションを取得
   const session = await auth();
@@ -114,18 +151,49 @@ export default async function HomePage() {
 
         <div style={{ borderTop: '1px solid #eee', paddingTop: '20px' }}>
           <h3>📖 あなたのTODOリスト</h3>
-          {/* 🚀 ログイン状態によって表示内容を切り替える */}
+          {/* ログイン状態によって表示内容を切り替える */}
           {isLoggedIn ? (
             <ul>
               {todos.map((todo) => (
-                <li key={todo.id}>
-                  No.{todo.id} {todo.title}
+                <li
+                  key={todo.id}
+                  // 削除ボタンを右端に配置するためのスタイルを追加
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 0',
+                    borderBottom: '1px dotted #ccc',
+                  }}
+                >
+                  <span>
+                    No.{todo.id} {todo.title}
+                  </span>
+                  {/* 🚀 削除ボタンのフォーム */}
+                  <form action={deleteTodo}>
+                    {/* 削除対象のTODO IDを隠しフィールドで送信 */}
+                    <input type="hidden" name="id" value={todo.id} />
+                    <button
+                      type="submit"
+                      style={{
+                        background: '#dc3545', // 赤色
+                        color: 'white',
+                        border: 'none',
+                        padding: '5px 10px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                      }}
+                    >
+                      削除
+                    </button>
+                  </form>
                 </li>
               ))}
             </ul>
           ) : (
             <p style={{ color: '#666', fontStyle: 'italic' }}>
-              ログイン後、やることが表示されます
+              **ログイン後、やることが表示されます**
             </p>
           )}
         </div>
