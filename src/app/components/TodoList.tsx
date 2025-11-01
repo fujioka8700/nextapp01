@@ -17,11 +17,10 @@ export default function TodoList({
   deleteTodo,
   updateTodo,
 }: TodoListProps) {
-  // 🚀 編集中の入力値を管理する状態 (key: todoId, value: draftTitle)
+  // 編集中の入力値を管理する状態 (key: todoId, value: draftTitle)
   const [draftTitles, setDraftTitles] = useState<Record<number, string>>({});
 
-  // フォーム送信後にデータを再ロードするロジックは、親コンポーネント（HomePage）が担当するため、
-  // ここではServer Actionを呼び出すことに専念します。
+  // --- イベントハンドラ ---
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,7 +28,7 @@ export default function TodoList({
     const formData = new FormData(e.currentTarget);
     await updateTodo(formData);
 
-    // 更新が成功したら、draftTitlesから該当IDを削除し、ボタンを非活性化
+    // 更新が成功したら、該当IDのドラフト状態を削除してボタンを非活性化
     const idString = formData.get('id') as string;
     const todoId = parseInt(idString, 10);
     if (!isNaN(todoId)) {
@@ -39,6 +38,7 @@ export default function TodoList({
         return newState;
       });
     }
+    // 親コンポーネントのServer Actionが revalidatePath を実行し、データが再取得される
   };
 
   const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -49,13 +49,15 @@ export default function TodoList({
     // 削除後の再描画はServer ActionのrevalidatePathに依存
   };
 
-  // 🚀 入力値変更ハンドラー
+  // 入力値変更ハンドラー
   const handleTitleChange = (todoId: number, newTitle: string) => {
     setDraftTitles((prev) => ({
       ...prev,
       [todoId]: newTitle,
     }));
   };
+
+  // --- レンダリングロジック ---
 
   if (todos.length === 0) {
     return (
@@ -68,9 +70,10 @@ export default function TodoList({
   return (
     <ul style={{ listStyleType: 'none', padding: 0 }}>
       {todos.map((todo) => {
-        // 🚀 現在の入力値を取得。draftsになければ元のタイトルを使用
+        // 現在の入力値を取得。draftsになければ元のタイトルを使用
         const currentDraft = draftTitles[todo.id] ?? todo.title;
-        // 🚀 変更されたかどうかをチェック
+
+        // 変更されたかどうかをチェック (元のタイトルと異なる、かつ空でない)
         const isDirty =
           currentDraft !== todo.title && currentDraft.trim() !== '';
 
@@ -89,7 +92,7 @@ export default function TodoList({
 
             {/* 編集フォーム */}
             <form
-              onSubmit={handleUpdate} // クライアント側でラップした関数を使用
+              onSubmit={handleUpdate}
               style={{
                 display: 'flex',
                 flexGrow: 1,
@@ -101,8 +104,8 @@ export default function TodoList({
               <input
                 type="text"
                 name="newTitle"
-                value={currentDraft} // 🚀 状態から値を取得
-                onChange={(e) => handleTitleChange(todo.id, e.target.value)} // 🚀 変更を状態に反映
+                value={currentDraft} // 状態から値を取得
+                onChange={(e) => handleTitleChange(todo.id, e.target.value)} // 変更を状態に反映
                 required
                 style={{
                   padding: '5px',
@@ -112,9 +115,9 @@ export default function TodoList({
               />
               <button
                 type="submit"
-                disabled={!isDirty} // 🚀 変更がない場合に非活性化
+                disabled={!isDirty} // 変更がない場合に非活性化
                 style={{
-                  background: isDirty ? '#007bff' : '#ccc', // 活性時に青、非活性時に灰色
+                  background: isDirty ? '#007bff' : '#ccc',
                   color: 'white',
                   border: 'none',
                   padding: '5px 10px',
