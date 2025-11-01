@@ -142,13 +142,7 @@ export default async function HomePage() {
             />
             <button
               type="submit"
-              style={{
-                padding: '8px 15px',
-                background: 'green',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              className="px-4 py-2 bg-green-600 text-white border-none cursor-pointer transition hover:bg-green-700 rounded-md"
             >
               やることを追加
             </button>
