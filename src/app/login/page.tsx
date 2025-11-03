@@ -20,7 +20,7 @@ const LoginPage: React.FC = () => {
 
   return (
     // ⬇️ 修正箇所: 垂直方向の中央揃え (items-center) を削除し、上部にパディング (pt-20) を追加
-    <div className="flex justify-center min-h-screen bg-gray-50 pt-20">
+    <div className="flex justify-center min-h-screen pt-20">
       <div className="w-full max-w-sm p-8 space-y-6 bg-white rounded-lg shadow-xl h-fit">
         <h2 className="text-2xl font-bold text-center text-gray-900">
           ログイン

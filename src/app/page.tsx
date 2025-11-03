@@ -148,7 +148,7 @@ export default async function HomePage() {
             </button>
           </form>
         ) : (
-          <p style={{ marginBottom: '20px', color: 'black' }}>
+          <p style={{ marginBottom: '20px' }}>
             TODOを追加するにはログインが必要です。
           </p>
         )}
